@@ -1,0 +1,8 @@
+models/
+
+*.obj
+*.glb
+*.mtl
+
+__pycache__/
+*.pyc

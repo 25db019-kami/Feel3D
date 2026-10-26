@@ -1,0 +1,204 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>SMPL Viewer</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+}
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+  }
+}
+</script>
+
+</head>
+<body>
+
+<div style="
+position:absolute;
+top:20px;
+left:20px;
+z-index:100;
+background:white;
+padding:20px;
+border-radius:12px;
+width:280px;
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+">
+
+<div>
+<label style="display:inline-block; width:70px;">
+身長:
+</label>
+<input id="height" type="number" value="160" style="width:90px;">
+cm
+</div>
+
+<div>
+<label style="display:inline-block; width:70px;">
+体重:
+</label>
+<input id="weight" type="number" value="55" style="width:90px;">
+kg
+</div>
+
+<div>
+<label style="display:inline-block; width:70px;">
+胸囲:
+</label>
+<input id="chest" type="number" value="85" style="width:90px;">
+cm
+</div>
+
+<div>
+<label style="display:inline-block; width:70px;">
+ウエスト:
+</label>
+<input id="waist" type="number" value="70" style="width:90px;">
+cm
+</div>
+
+<div>
+<label style="display:inline-block; width:70px;">
+ヒップ:
+</label>
+<input id="hip" type="number" value="90" style="width:90px;">
+cm
+</div>
+
+<br>
+
+<button id="generate">
+アバター生成
+</button>
+
+</div>
+
+<script type="module">
+
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf0f0f0);
+
+const camera = new THREE.PerspectiveCamera(
+50,
+window.innerWidth/window.innerHeight,
+0.1,
+100
+);
+
+camera.position.set(0, 1.5, 5);
+
+const renderer = new THREE.WebGLRenderer({
+antialias:true
+});
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(
+camera,
+renderer.domElement
+);
+
+scene.add(new THREE.AmbientLight(0xffffff,2));
+
+const light = new THREE.DirectionalLight(0xffffff,2);
+light.position.set(1,2,3);
+scene.add(light);
+
+const loader = new GLTFLoader();
+
+let avatar;
+loader.load(
+  "./smpl_base.glb",
+  (gltf)=>{
+
+    avatar = gltf.scene;
+
+    avatar.scale.set(1,1,1);
+
+    scene.add(avatar);
+
+    console.log("GLB読み込み成功");
+  }
+);
+
+function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene,camera);
+}
+
+window.addEventListener('resize', () => {
+
+    camera.aspect =
+        window.innerWidth / window.innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+});
+
+document.getElementById("generate").onclick = async () => {
+
+    console.log("ボタン押された");
+
+    try {
+
+        const res = await fetch(
+            "http://localhost:5000/generate",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    height: 160,
+                    weight: 55,
+                    chest: 85,
+                    waist: 70,
+                    hip: 90
+                })
+            }
+        );
+
+        console.log("status =", res.status);
+
+        const data = await res.json();
+
+        console.log(data);
+
+    } catch(err) {
+
+        console.error("FETCH ERROR", err);
+
+    }
+};
+
+animate();
+
+</script>
+
+</body>
+</html>
