@@ -87,7 +87,7 @@ cm
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f0f0);
@@ -123,22 +123,132 @@ const light = new THREE.DirectionalLight(0xffffff,2);
 light.position.set(1,2,3);
 scene.add(light);
 
-const loader = new GLTFLoader();
+const loader = new OBJLoader();
+
+const jointGroup = new THREE.Group();
+scene.add(jointGroup);
+
+
 
 let avatar;
 loader.load(
-  "./smpl_base.glb",
-  (gltf)=>{
+    "./model.obj?v=" + Date.now(),
+    (obj)=>{
 
-    avatar = gltf.scene;
+        obj.traverse((child)=>{
 
-    avatar.scale.set(1,1,1);
+            if(child.isMesh){
 
-    scene.add(avatar);
+                child.material =
+                    new THREE.MeshStandardMaterial({
+                        color:0xcccccc
+                    });
 
-    console.log("GLB読み込み成功");
-  }
+            }
+
+        });
+
+        avatar = obj;
+
+        scene.add(avatar);
+
+        console.log("OBJ読み込み成功");
+
+    }
 );
+
+loadJoints();
+
+function loadJoints(){
+
+    fetch("./joints.txt?v=" + Date.now())
+    .then(res => res.text())
+    .then(text => {
+
+        jointGroup.clear();
+
+        const lines =
+            text.trim().split("\n");
+
+        const joints = [];
+
+        lines.forEach(line => {
+
+            const parts =
+                line.split(" ");
+
+            const x =
+                parseFloat(parts[1]);
+
+            const y =
+                parseFloat(parts[2]);
+
+            const z =
+                parseFloat(parts[3]);
+
+            const sphere =
+                new THREE.Mesh(
+                    new THREE.SphereGeometry(
+                        0.02,
+                        8,
+                        8
+                    ),
+                    new THREE.MeshBasicMaterial({
+                        color: 0xff0000
+                    })
+                );
+
+            sphere.position.set(
+                x,
+                y,
+                z
+            );
+
+            jointGroup.add(
+                sphere
+            );
+
+            joints.push(
+                new THREE.Vector3(
+                    x,
+                    y,
+                    z
+                )
+            );
+
+        });
+
+        const material =
+    new THREE.LineBasicMaterial({
+        color: 0x00ff00
+    });
+
+for(
+    let i = 0;
+    i < joints.length - 1;
+    i++
+){
+
+    const geometry =
+        new THREE.BufferGeometry()
+        .setFromPoints([
+            joints[i],
+            joints[i + 1]
+        ]);
+
+    const line =
+        new THREE.Line(
+            geometry,
+            material
+        );
+
+    jointGroup.add(line);
+
+}
+
+    });
+
+}
 
 function animate(){
     requestAnimationFrame(animate);
@@ -166,6 +276,31 @@ document.getElementById("generate").onclick = async () => {
 
     try {
 
+        const height =
+            Number(
+                document.getElementById("height").value
+            );
+
+        const weight =
+            Number(
+                document.getElementById("weight").value
+            );
+
+        const chest =
+            Number(
+                document.getElementById("chest").value
+            );
+
+        const waist =
+            Number(
+                document.getElementById("waist").value
+            );
+
+        const hip =
+            Number(
+                document.getElementById("hip").value
+            );
+
         const res = await fetch(
             "http://localhost:5000/generate",
             {
@@ -174,11 +309,11 @@ document.getElementById("generate").onclick = async () => {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    height: 160,
-                    weight: 55,
-                    chest: 85,
-                    waist: 70,
-                    hip: 90
+                    height,
+                    weight,
+                    chest,
+                    waist,
+                    hip
                 })
             }
         );
@@ -189,11 +324,58 @@ document.getElementById("generate").onclick = async () => {
 
         console.log(data);
 
-    } catch(err) {
+        if(avatar){
 
-        console.error("FETCH ERROR", err);
+            scene.remove(avatar);
+
+            avatar = null;
+
+        }
+
+        setTimeout(()=>{
+
+            loader.load(
+                "./model.obj?v=" + Date.now(),
+                (obj)=>{
+
+                    obj.traverse((child)=>{
+
+                        if(child.isMesh){
+
+                            child.material =
+                                new THREE.MeshStandardMaterial({
+                                    color:0xcccccc
+                                });
+
+                        }
+
+                    });
+
+                    avatar = obj;
+
+                    scene.add(avatar);
+
+                    console.log(
+                        "OBJ再読み込み成功"
+                    );
+
+                }
+            );
+
+            loadJoints();
+
+        }, 1000);
 
     }
+    catch(err){
+
+        console.error(
+            "FETCH ERROR",
+            err
+        );
+
+    }
+
 };
 
 animate();

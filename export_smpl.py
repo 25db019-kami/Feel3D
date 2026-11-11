@@ -68,14 +68,29 @@ mesh = trimesh.Trimesh(vertices=base_verts, faces=faces, process=False)
 
 # 5. OBJ書き出し
 
-output_obj_path = (
-    f'P:/コンテスト/'
-    f'smpl_{int(weight)}kg_'
-    f'{int(chest)}c_'
-    f'{int(waist)}w_'
-    f'{int(hip)}h.obj'
-)
+output_obj_path = 'P:/コンテスト/Feel3D/model.obj'
 
 mesh.export(output_obj_path)
+
+joints = (
+    base_output.joints
+    .detach()
+    .cpu()
+    .numpy()[0]
+)
+
+with open(
+    "P:/コンテスト/Feel3D/joints.txt",
+    "w"
+) as f:
+
+    for i, joint in enumerate(joints):
+
+        f.write(
+            f"{i} "
+            f"{joint[0]} "
+            f"{joint[1]} "
+            f"{joint[2]}\n"
+        )
 
 print(f"✅ OBJ出力成功: {output_obj_path}")
